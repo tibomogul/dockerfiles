@@ -1,0 +1,92 @@
+FROM ubuntu:24.04
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
+
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  build-essential \
+  ca-certificates \
+  ca-certificates-java \
+  curl \
+  git \
+  gnupg \
+  jq \
+  locales \
+  lsb-release \
+  libffi-dev \
+  libpq-dev \
+  libreadline-dev \
+  libsqlite3-dev \
+  libssl-dev \
+  libvips \
+  libyaml-dev \
+  openjdk-11-jre \
+  openssh-client \
+  pkg-config \
+  postgresql-client \
+  redis \
+  ruby-dev \
+  tzdata \
+  vim-tiny \
+  wget \
+  zip \
+  zlib1g-dev
+
+
+# https://github.com/jekyll/jekyll/issues/4268#issuecomment-167406574
+RUN dpkg-reconfigure locales && \
+  locale-gen C.UTF-8 && \
+  /usr/sbin/update-locale LANG=C.UTF-8
+
+# Install needed default locale for Makefly
+RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && \
+  locale-gen
+
+# Set default locale for the environment
+ENV LC_ALL C.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+
+# Clean up APT when done.
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Make sure you define DOCKER_UID and DOCKER_GID to match the user IDs used on your system,
+# so that your volume mappings work with your user
+ARG USER_NAME=user
+ARG APP_DIR=app
+ARG DOCKER_UID=1000
+ARG DOCKER_GID=1000
+RUN groupadd -g $DOCKER_GID $USER_NAME
+RUN useradd $USER_NAME -u $DOCKER_UID -g $DOCKER_GID --create-home --shell /bin/bash
+
+USER ${USER_NAME}:${USER_NAME}
+
+ARG NODE_VERSION=20.16.0
+ARG NVM_DIR=/home/${USER_NAME}/.nvm
+ARG NVM_INSTALL_VERSION=v0.40.0
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_INSTALL_VERSION/install.sh | bash
+RUN . "$NVM_DIR/nvm.sh" \
+  && nvm install ${NODE_VERSION} \
+  && nvm use v${NODE_VERSION} \
+  && nvm alias default v${NODE_VERSION}
+RUN echo 'PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin/:$PATH' \
+  >> /home/${USER_NAME}/.bashrc
+
+
+ARG RUBY_VERSION=3.3.4
+
+RUN git clone https://github.com/rbenv/rbenv.git /home/${USER_NAME}/.rbenv
+RUN git clone https://github.com/rbenv/ruby-build.git /home/${USER_NAME}/.rbenv/plugins/ruby-build
+RUN echo 'PATH=$HOME/.rbenv/plugins/ruby-build/bin:$HOME/.rbenv/bin:$PATH' \
+  >> /home/${USER_NAME}/.bashrc
+RUN echo 'eval "$($HOME/.rbenv/bin/rbenv init -)"' >> /home/${USER_NAME}/.bashrc
+RUN eval "$(/home/${USER_NAME}/.rbenv/bin/rbenv init -)" \
+  && rbenv install ${RUBY_VERSION} \
+  && rbenv global ${RUBY_VERSION}
+RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
+
+RUN mkdir /home/$USER_NAME/${APP_DIR}
+WORKDIR /home/$USER_NAME/${APP_DIR}
+
+CMD ["sleep", "infinity"]
+
+
