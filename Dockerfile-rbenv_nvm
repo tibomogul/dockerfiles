@@ -48,6 +48,10 @@ ENV LANGUAGE en_US.UTF-8
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Use bash as the default shell, and specify a login shell so that .profile is
+# sourced when the shell starts
+SHELL ["/bin/bash", "-l", "-c"]
+
 # Make sure you define DOCKER_UID and DOCKER_GID to match the user IDs used on your system,
 # so that your volume mappings work with your user
 ARG USER_NAME=user
@@ -64,24 +68,32 @@ ARG NVM_DIR=/home/${USER_NAME}/.nvm
 ARG NVM_INSTALL_VERSION=v0.40.0
 
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_INSTALL_VERSION/install.sh | bash
+
+# We need to source nvm.sh as the installer copies sourcing to .bashrc
 RUN . "$NVM_DIR/nvm.sh" \
   && nvm install ${NODE_VERSION} \
   && nvm use v${NODE_VERSION} \
   && nvm alias default v${NODE_VERSION}
+
+# Add this to .profile instead of .bashrc so that its used when bash loads
 RUN echo 'PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin/:$PATH' \
-  >> /home/${USER_NAME}/.bashrc
+  >> /home/${USER_NAME}/.profile
 
 
 ARG RUBY_VERSION=3.3.4
 
 RUN git clone https://github.com/rbenv/rbenv.git /home/${USER_NAME}/.rbenv
 RUN git clone https://github.com/rbenv/ruby-build.git /home/${USER_NAME}/.rbenv/plugins/ruby-build
+
+# Add this to .profile instead of .bashrc so that its used when bash loads
 RUN echo 'PATH=$HOME/.rbenv/plugins/ruby-build/bin:$HOME/.rbenv/bin:$PATH' \
-  >> /home/${USER_NAME}/.bashrc
-RUN echo 'eval "$($HOME/.rbenv/bin/rbenv init -)"' >> /home/${USER_NAME}/.bashrc
-RUN eval "$(/home/${USER_NAME}/.rbenv/bin/rbenv init -)" \
-  && rbenv install ${RUBY_VERSION} \
+  >> /home/${USER_NAME}/.profile
+RUN echo 'eval "$($HOME/.rbenv/bin/rbenv init -)"' >> /home/${USER_NAME}/.profile
+
+# No need to source .bashrc or .profile here, as its loaded by bash
+RUN rbenv install ${RUBY_VERSION} \
   && rbenv global ${RUBY_VERSION}
+
 RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
 
 RUN mkdir /home/$USER_NAME/${APP_DIR}
