@@ -56,14 +56,13 @@ SHELL ["/bin/bash", "-l", "-c"]
 # so that your volume mappings work with your user
 ARG build_user_name=user
 ENV USER_NAME=$build_user_name
-ARG build_app_dir=app
-ENV APP_DIR=$build_app_dir
 ARG DOCKER_UID=1000
 ARG DOCKER_GID=1000
 RUN groupadd -g $DOCKER_GID $USER_NAME
 RUN useradd $USER_NAME -u $DOCKER_UID -g $DOCKER_GID --create-home --shell /bin/bash
 
 USER ${USER_NAME}:${USER_NAME}
+WORKDIR /home/$USER_NAME
 
 ARG build_node_version=20.16.0
 ENV NODE_VERSION=$build_node_version
@@ -101,9 +100,4 @@ RUN rbenv install ${RUBY_VERSION} \
 
 RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
 
-RUN mkdir /home/$USER_NAME/${APP_DIR}
-WORKDIR /home/$USER_NAME/${APP_DIR}
-
 CMD ["sleep", "infinity"]
-
-
