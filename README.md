@@ -55,7 +55,7 @@ docker build . -f Dockerfile-rbenv_nvm -t tibomogul/rbenv_nvm
 
 ```
 docker build . \
-  --build-arg USER_NAME=node \
+  --build-arg build_user_name=node \
   -f Dockerfile-rbenv_nvm \
   -t tibomogul/rbenv_nvm:user-node
 ```
