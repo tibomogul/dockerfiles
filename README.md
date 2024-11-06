@@ -130,6 +130,34 @@ docker run --rm -it \
   tibomogul/rbenv_nvm
 ```
 
+### Changing the timezone (for your sanity)
+Using `docker build`, so it is the default in your images,
+```
+docker build . \
+  --build-arg build_timezone=Australia/Brisbane \
+  -f Dockerfile-rbenv_nvm \
+  -t myownimage
+```
+
+Or in `docker compose`, if you build an image
+```
+    build:
+      context: ./
+      args:
+        build_timezone: Australia/Brisbane
+```
+Or in `docker compose`, if you use a pre-built image,
+```
+    environment:
+      TZ: Australia/Brisbane
+```
+
+Or just `docker run`
+```
+docker run --rm -it \
+  -e TZ=Australia/Brisbane \
+  tibomogul/rbenv_nvm
+```
 
 ## Extending the base image
 
@@ -233,11 +261,13 @@ Changing parameters. You can change the following:
 - build_node_version (default: 20.16.0)
 - build_nvm_install_version (default: v0.40.0)
 - build_ruby_version (default: 3.3.4)
+- build_timezone (default: Etc/Universal, e.g. Australia/Brisbane)
 ```
 docker build . \
   --build-arg build_docker_uid=$(id -u) \
   --build-arg build_docker_gid=$(id -g) \
   --build-arg build_user_name=node \
+  --build-arg build_timezone=Australia/Brisbane \
   -f Dockerfile-rbenv_nvm \
   -t tibomogul/rbenv_nvm:user-node
 ```

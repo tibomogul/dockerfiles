@@ -53,6 +53,17 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 # sourced when the shell starts
 SHELL ["/bin/bash", "-l", "-c"]
 
+# Provide argument or runtime environment variable
+ARG build_timezone=Etc/Universal
+ENV TZ=$build_timezone
+
+COPY --chmod=775 check_ownership.sh /usr/local/bin/check_ownership
+
+ENTRYPOINT ["check_ownership"]
+
+# run with `sleep infinity` if you want to keep a running container to exec to
+CMD ["bash", "-l"]
+
 # Make sure you define build_docker_uid and build_docker_gid to match the user IDs used on your system,
 # so that your volume mappings work with your user
 ARG build_user_name=user
@@ -105,10 +116,3 @@ RUN rbenv install ${RUBY_VERSION} \
   && rbenv global ${RUBY_VERSION}
 
 RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
-
-COPY --chmod=775 check_ownership.sh /usr/local/bin/check_ownership
-
-ENTRYPOINT ["check_ownership"]
-
-# run with `sleep infinity` if you want to keep a running container to exec to
-CMD ["bash", "-l"]
