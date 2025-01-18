@@ -72,13 +72,13 @@ ARG build_docker_uid
 RUN test -n "$build_docker_uid" || (echo "build_docker_uid  not set" && false)
 ARG build_docker_gid=1000
 RUN test -n "$build_docker_gid" || (echo "build_docker_gid  not set" && false)
-RUN groupadd -g $build_docker_gid $USER_NAME
+RUN test -n $(getent group $build_docker_gid) || groupadd -g $build_docker_gid $USER_NAME
 RUN useradd $USER_NAME -u $build_docker_uid -g $build_docker_gid --create-home --shell /bin/bash
 RUN mkdir -p /etc/sudoers.d \
   && echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USER_NAME \
   && chmod 0440 /etc/sudoers.d/$USER_NAME
 
-USER ${USER_NAME}:${USER_NAME}
+USER ${USER_NAME}
 WORKDIR /home/$USER_NAME
 
 ARG build_node_version=20.16.0
