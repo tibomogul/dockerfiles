@@ -75,6 +75,8 @@ $ bin/rails s -b 0.0.0.0
 ```
 
 ### If you use repos on SCMs that need SSH access
+*NOTE: These instructions run on Docker Engine. We need to confirm on Mac/Docker Desktop.*
+
 Make sure your ssh credentials are in ssh-agent. For example, in your `.bashrc`,
 ```
 if [ -z "$SSH_AUTH_SOCK" ] ; then
@@ -94,7 +96,7 @@ docker run --rm -it \
   tibomogul/rbenv_nvm
 ```
 
-### If you plan to push
+#### If you plan to push
 Add the name and email of your git user to you environment
 ```
 export GIT_COMMITTER_NAME="Tibo Mogul"
@@ -114,7 +116,7 @@ docker run --rm -it \
   tibomogul/rbenv_nvm
 ```
 
-### If both
+#### If both
 ```
 docker run --rm -it \
   -v $SSH_AUTH_SOCK:/ssh-agent \
@@ -194,6 +196,8 @@ CMD ["sleep", "infinity"]
 ```
 
 ### Node
+*NOTE: These instructions run on Docker Engine. We need to confirm on Mac/Docker Desktop.*
+
 Note that in this example, the code uses repos in Github. There are run instructions to:
 - setup SSH access to Github
 - mount the SSH credentials during install
