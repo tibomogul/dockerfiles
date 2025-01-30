@@ -251,6 +251,7 @@ docker run --rm -it \
 docker build . \
   --build-arg build_docker_uid=$(id -u) \
   --build-arg build_docker_gid=$(id -g) \
+  --build-arg build_timezone=Australia/Brisbane \
   -f Dockerfile-rbenv_nvm \
   -t tibomogul/rbenv_nvm
 ```

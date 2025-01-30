@@ -116,3 +116,6 @@ RUN rbenv install ${RUBY_VERSION} \
   && rbenv global ${RUBY_VERSION}
 
 RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
+
+COPY --chmod=775 thor_merge.sh /usr/local/bin/thor_merge
+RUN echo 'THOR_MERGE="thor_merge"' >> /home/${USER_NAME}/.profile
