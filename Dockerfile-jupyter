@@ -1,0 +1,159 @@
+FROM ubuntu:24.04
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
+
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  build-essential \
+  ca-certificates \
+  ca-certificates-java \
+  curl \
+  git \
+  gnupg \
+  jq \
+  libbz2-dev \
+  libffi-dev \
+  libgdbm-dev \
+  liblzma-dev \
+  libncurses5-dev \
+  libncursesw5-dev \
+  libpq-dev \
+  libreadline-dev \
+  libsqlite3-dev \
+  libssl-dev \
+  libvips \
+  libyaml-dev \
+  libzmq3-dev \
+  locales \
+  lsb-release \
+  openjdk-11-jre \
+  openssh-client \
+  pkg-config \
+  postgresql-client \
+  redis \
+  ruby-dev \
+  sudo \
+  tk-dev \
+  tzdata \
+  uuid-dev \
+  vim-tiny \
+  wget \
+  zip \
+  zlib1g-dev
+
+
+# https://github.com/jekyll/jekyll/issues/4268#issuecomment-167406574
+RUN dpkg-reconfigure locales && \
+  locale-gen C.UTF-8 && \
+  /usr/sbin/update-locale LANG=C.UTF-8
+
+# Install needed default locale for Makefly
+RUN echo 'en_US.UTF-8 UTF-8' >> /etc/locale.gen && \
+  locale-gen
+
+# Set default locale for the environment
+ENV LC_ALL=C.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US.UTF-8
+
+# Clean up APT when done.
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Use bash as the default shell, and specify a login shell so that .profile is
+# sourced when the shell starts
+SHELL ["/bin/bash", "-l", "-c"]
+
+# Provide argument or runtime environment variable
+ARG build_timezone=Etc/Universal
+ENV TZ=$build_timezone
+
+COPY --chmod=775 check_ownership.sh /usr/local/bin/check_ownership
+
+ENTRYPOINT ["check_ownership"]
+
+# run with `sleep infinity` if you want to keep a running container to exec to
+CMD ["bash", "-l"]
+
+# Make sure you define build_docker_uid and build_docker_gid to match the user IDs used on your system,
+# so that your volume mappings work with your user
+ARG build_user_name=user
+ENV USER_NAME=$build_user_name
+ARG build_docker_uid
+RUN test -n "$build_docker_uid" || (echo "build_docker_uid  not set" && false)
+ARG build_docker_gid
+RUN test -n "$build_docker_gid" || (echo "build_docker_gid  not set" && false)
+RUN test -n "$(getent group $build_docker_gid)" || groupadd -g $build_docker_gid $USER_NAME
+RUN useradd $USER_NAME -u $build_docker_uid -g $build_docker_gid --create-home --shell /bin/bash
+RUN mkdir -p /etc/sudoers.d \
+  && echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USER_NAME \
+  && chmod 0440 /etc/sudoers.d/$USER_NAME
+
+USER ${USER_NAME}
+WORKDIR /home/$USER_NAME
+
+ARG build_node_version=20.16.0
+ENV NODE_VERSION=$build_node_version
+ARG NVM_DIR=/home/${USER_NAME}/.nvm
+ARG build_nvm_install_version=v0.40.0
+ENV NVM_INSTALL_VERSION=$build_nvm_install_version
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_INSTALL_VERSION/install.sh | bash
+
+# We need to source nvm.sh as the installer copies sourcing to .bashrc
+RUN . "$NVM_DIR/nvm.sh" \
+  && nvm install ${NODE_VERSION} \
+  && nvm use v${NODE_VERSION} \
+  && nvm alias default v${NODE_VERSION}
+
+# Add this to .profile instead of .bashrc so that its used when bash loads
+RUN echo 'PATH=$HOME/.nvm/versions/node/v${NODE_VERSION}/bin/:$PATH' \
+  >> /home/${USER_NAME}/.profile
+
+# Install Python
+ARG build_python_version=3.12.3
+ENV PYTHON_VERSION=$build_python_version
+
+RUN git clone https://github.com/pyenv/pyenv.git /home/${USER_NAME}/.pyenv
+
+# Add this to .profile instead of .bashrc so that its used when bash loads
+RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /home/${USER_NAME}/.profile
+RUN echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> /home/${USER_NAME}/.profile
+RUN echo 'eval "$(pyenv init -)"' >> /home/${USER_NAME}/.profile
+
+# No need to source .bashrc or .profile here, as its loaded by bash
+RUN . /home/${USER_NAME}/.profile && pyenv install ${PYTHON_VERSION} \
+  && pyenv global ${PYTHON_VERSION}
+
+# Install pipx
+RUN . /home/${USER_NAME}/.profile && python -m pip install --user pipx && python -m pipx ensurepath
+
+# Install Ruby
+ARG build_ruby_version=3.3.4
+ENV RUBY_VERSION=$build_ruby_version
+
+RUN git clone https://github.com/rbenv/rbenv.git /home/${USER_NAME}/.rbenv
+RUN git clone https://github.com/rbenv/ruby-build.git /home/${USER_NAME}/.rbenv/plugins/ruby-build
+
+# Add this to .profile instead of .bashrc so that its used when bash loads
+RUN echo 'PATH=$HOME/.rbenv/plugins/ruby-build/bin:$HOME/.rbenv/bin:$PATH' \
+  >> /home/${USER_NAME}/.profile
+RUN echo 'eval "$($HOME/.rbenv/bin/rbenv init -)"' >> /home/${USER_NAME}/.profile
+
+# No need to source .bashrc or .profile here, as its loaded by bash
+RUN rbenv install ${RUBY_VERSION} \
+  && rbenv global ${RUBY_VERSION}
+
+RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
+
+COPY --chmod=775 thor_merge.sh /usr/local/bin/thor_merge
+RUN echo 'THOR_MERGE="thor_merge"' >> /home/${USER_NAME}/.profile
+
+RUN gem install bundler -v 4.0.1
+
+RUN pip install jupyter
+
+RUN gem install iruby
+
+RUN iruby register --force
+
+ADD jupyter_samples .
+
+WORKDIR /home/$USER_NAME/notebooks
