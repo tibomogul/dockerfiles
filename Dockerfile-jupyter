@@ -146,7 +146,9 @@ RUN echo 'gem: --no-document' >> /home/${USER_NAME}/.gemrc
 COPY --chmod=775 thor_merge.sh /usr/local/bin/thor_merge
 RUN echo 'THOR_MERGE="thor_merge"' >> /home/${USER_NAME}/.profile
 
-RUN gem install bundler -v 4.0.1
+RUN gem install --default bundler
+
+RUN gem update --system
 
 RUN pip install jupyter
 
